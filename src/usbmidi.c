@@ -475,14 +475,14 @@ int main(void)
 	rcc_periph_clock_enable(RCC_GPIOC);
 	rcc_periph_clock_enable(RCC_GPIOB);
 
-	rcc_periph_clock_enable(RCC_USART1); //alex
+	rcc_periph_clock_enable(RCC_USART1);
 
 	usart_setup();
 
 	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ,
 		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
-	gpio_set(GPIOC, GPIO13); // led off
+	gpio_set(GPIOC, GPIO13);
 
 	// parallel debug out
 	gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
