@@ -326,26 +326,15 @@ const uint8_t sysex_identity[] = {
 	0x00,	/* Padding */
 };
 
-static bool midiusart = true;
+
 
 static void usbmidi_data_rx_cb(usbd_device *dev, uint8_t ep)
 {
 	(void)ep;
 
-	//static bool keys[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	char buf[64];
 	int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
-
-	/* This implementation treats any message from the host as a SysEx
-	 * identity request. This works well enough providing the host
-	 * packs the identify request in a single 8 byte USB message.
-	 */
-	/*if (len) {
-		while (usbd_ep_write_packet(usbd_dev, 0x81, sysex_identity,
-					    sizeof(sysex_identity)) == 0);
-	}
-	*/
 
 	if (len) {
 
@@ -353,93 +342,7 @@ static void usbmidi_data_rx_cb(usbd_device *dev, uint8_t ep)
 		usart_send_blocking(USART1, buf[2]);
 		usart_send_blocking(USART1, buf[3]);
 
-		/*
-
-		if(buf[0]==0x09) {
-			//note on
-			keys[(uint8_t)(buf[2])] = 1;
-		} else if(buf[0]==0x08) {
-			//note off
-			keys[(uint8_t)(buf[2])] = 0;
-		}
-		
-		bool note_on = false;
-		for (unsigned int i = 0; i < 128; i++) {
-			if(keys[i] == 1) {
-				note_on = true;
-			}
-		}
-		if(note_on) {
-			if(midiusart){
-			
-
-			
-
-			for(int ix = 0; ix < 2; ix++){
-			gpio_clear(GPIOC, GPIO13); 
-			
-                       int a_as_int = (int)buf[ix+2];
-
-  			unsigned char strx[16];
-
-  			sprintf(strx, "%d", a_as_int);
-
-			int length;
-			length = sizeof(strx) / sizeof(int);
-
-
-			for(int i = 0; i < length; i++){
-				usart_send_blocking(USART1, strx[i]);   // USART1: Send byte. 
-			}
-                        
-			
-
-			usart_send_blocking(USART1, '\r');
-                        usart_send_blocking(USART1, '\n');
-
-			}
-
-			usart_send_blocking(USART1, '\r');
-                        usart_send_blocking(USART1, '\n');
-
-                        //c = (c == 9) ? 0 : c + 1;       // Increment c. 
-                        //if ((j++ % 80) == 0) {  // Newline after line full. 
-                         //       usart_send_blocking(USART1, '\r');
-                           //     usart_send_blocking(USART1, '\n');
-                        //}
-
-                        //for (i = 0; i < 800000; i++)    // Wait a bit. 
-                           //     __asm__("nop");
-
-				
-				midiusart=false; 
-			}
-
-		} else {
-			gpio_set(GPIOC, GPIO13);
-			midiusart = true;
-		}
-
-		*/
-
 	}
-
-/*
-	while(1){
-			int c = 0, j = 0, i;
-			    // LED on/off 
-	                usart_send_blocking(USART1, c + '0');   // USART1: Send byte. 
-	                c = (c == 9) ? 0 : c + 1;       // Increment c. 
-        	        if ((j++ % 80) == 0) {  // Newline after line full. 
-                        	usart_send_blocking(USART1, '\r');
-                        	usart_send_blocking(USART1, '\n');
-                	}
-                	
-			for (i = 0; i < 800000; i++)    // Wait a bit. 
-                        	__asm__("nop");
-
-	}
-*/
 
 }
 
@@ -449,13 +352,6 @@ static void usbmidi_data_rx_cb(usbd_device *dev, uint8_t ep)
 
 static void usbmidi_set_config(usbd_device *dev, uint16_t wValue)
 {
-/*
-	(void)wValue;
-
-	usbd_ep_setup(dev, 0x01, USB_ENDPOINT_ATTR_BULK, 64,
-			usbmidi_data_rx_cb);
-	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_BULK, 64, NULL);
-*/
 	
 	(void)wValue;
 
@@ -463,9 +359,7 @@ static void usbmidi_set_config(usbd_device *dev, uint16_t wValue)
 			usbmidi_data_rx_cb);
 	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_BULK, 64, NULL);
 
-	//systick init
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
-	// SysTick interrupt every N clock pulses: set reload to N-1
 	systick_set_reload(99999);
 	systick_interrupt_enable();
 	systick_counter_enable();
@@ -474,15 +368,6 @@ static void usbmidi_set_config(usbd_device *dev, uint16_t wValue)
 
 static void button_send_event(usbd_device *dev, int pressed)
 {
-
-/*
-	char buf[4] = { 0x08, // USB framing: virtual cable 0, note on 
-			0x80, // MIDI command: note on, channel 1 
-			60,   // Note 60 (middle C) 
-			64,   // "Normal" velocity 
-	};
-*/
-
 
 
 	char buf[4] = { 0x08, // USB framing: virtual cable 0, note on 
@@ -493,70 +378,14 @@ static void button_send_event(usbd_device *dev, int pressed)
 
 
 	buf[0] |= pressed;
-	//buf[1] |= pressed << 4;
 
 	while (usbd_ep_write_packet(dev, 0x81, buf, sizeof(buf)) == 0);
 }
 
 
-/*
-static void pot_send_event(uint8_t pot_num, uint8_t pot_value)
-{
-	static uint8_t last_sent_pot_value = 0;	
-	static uint8_t pot_buf[16];
-	static uint8_t pot_buf_ptr = 0;
-
-	pot_buf[pot_buf_ptr] = pot_value;
-	pot_buf_ptr = (pot_buf_ptr==15) ? 0 : pot_buf_ptr + 1;
-
-	uint16_t avg_pot_value = 0;
-
-	for (unsigned int i = 0; i < 16; i++) {
-		avg_pot_value += pot_buf[i];
-	}
-
-	if(last_sent_pot_value != (avg_pot_value/16) ) {
-		last_sent_pot_value = (avg_pot_value/16);
-
-		char buf[4] = { 0x03, // USB framing: virtual cable 0, three byte System Common Message
-				0b10110000, // MIDI command: Control Change, channel 0 
-				16+pot_num,   // CC number 
-				last_sent_pot_value,   // CC value 
-		};
-
-		while (usbd_ep_write_packet(usbd_dev, 0x81, buf, sizeof(buf)) == 0);
-	}
-}
-
-*/
-
-
-
-
 
 static void usart_setup(void)
 {
-        /*
- 	//Setup GPIO pin GPIO_USART1_TX. 
-        gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-                      GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
-
-	gpio_set_mode(GPIOA, GPIO_MODE_INPUT,
-		      GPIO_CNF_INPUT_FLOAT, GPIO_USART2_RX);
-
-        // Setup UART parameters. 
-	//usart_set_baudrate(USART1, 38400);
-	usart_set_baudrate(USART1, 115200);
-        usart_set_databits(USART1, 8);
-        usart_set_stopbits(USART1, USART_STOPBITS_1);
-       // usart_set_mode(USART1, USART_MODE_TX);
-	usart_set_mode(USART2, USART_MODE_TX_RX);
-        usart_set_parity(USART1, USART_PARITY_NONE);
-        usart_set_flow_control(USART1, USART_FLOWCONTROL_NONE);
-
-        // Finally enable the USART.
-        usart_enable(USART1);
-	*/
 
 	nvic_enable_irq(NVIC_USART1_IRQ);
 
@@ -569,7 +398,6 @@ static void usart_setup(void)
 		      GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
 
 	/* Setup UART parameters. */
-	//usart_set_baudrate(USART1, 230400);
 	usart_set_baudrate(USART1, 115200);
 	usart_set_databits(USART1, 8);
 	usart_set_stopbits(USART1, USART_STOPBITS_1);
@@ -597,7 +425,6 @@ void usart1_isr(void)
 	if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
 	    ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
 
-		/* Indicate that we got data. */
 		
 
 
@@ -630,12 +457,6 @@ void usart1_isr(void)
 	if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) &&
 	    ((USART_SR(USART1) & USART_SR_TXE) != 0)) {
 
-		/* Indicate that we are sending out data. */
-		// gpio_toggle(GPIOA, GPIO7);
-
-		/* Put data into the transmit register. */
-		data = 'A';
-		//usart_send(USART1, data);
 
 		/* Disable the TXE interrupt as we don't need it anymore. */
 		USART_CR1(USART1) &= ~USART_CR1_TXEIE;
@@ -667,9 +488,6 @@ int main(void)
 	gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
 		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO8|GPIO9|GPIO10|GPIO11|GPIO12|GPIO13|GPIO14|GPIO15);
 
-	// button pin
-	//gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO0);
-
 
 
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config,
@@ -679,28 +497,9 @@ int main(void)
 	usbd_register_set_config_callback(usbd_dev, usbmidi_set_config);
 
 
-	//adc_setup();
-	//spi_setup();
 
 	gpio_toggle(GPIOC, GPIO13); 
 	while (1) {
 		usbd_poll(usbd_dev);
-		//button_poll(usbd_dev);	
-/*
-		 int c = 0, j = 0, i;
-
-
-                        gpio_toggle(GPIOC, GPIO13);     // LED on/off 
-                        usart_send_blocking(USART1, c + '0');   // USART1: Send byte. 
-                        c = (c == 9) ? 0 : c + 1;       // Increment c. 
-                        if ((j++ % 80) == 0) {  // Newline after line full. 
-                                usart_send_blocking(USART1, '\r');
-                                usart_send_blocking(USART1, '\n');
-                        }
-
-                        for (i = 0; i < 800000; i++)    // Wait a bit. 
-                                __asm__("nop");
-*/
 	}
-	
 }
