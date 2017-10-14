@@ -39,3 +39,12 @@ or Build the bin firmware
 Flash with st-utils
 
 
+Open terminl (terminal1) and go to your *.elf file then type: `arm-none-eabi-gdb file.elf`
+
+Now open a new terminal (terminal2) and run the st-utils `st-util`
+
+go back to terminal1 and type: `tar extended-remote :4242` (4242 is the port st-util opens)
+
+now write the file to the stm32 (terminal1) `load`
+
+done
