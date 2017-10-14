@@ -36,6 +36,6 @@ or Build the bin firmware
 
 
 ## Flash
-Flash by st-utils
+Flash with st-utils
 
 

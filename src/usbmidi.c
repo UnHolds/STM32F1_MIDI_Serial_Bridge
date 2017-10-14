@@ -1,12 +1,5 @@
 /*
  * Copyright (C) 2017 Alexander Hold <darksunhd@gmail.com>
- * Copyright (C) 2016 Alexey Bolshakov <ua3mqj@gmail.com>
- * Copyright (C) 2016 Paul Fertser <fercerpav@gmail.com>
- * Copyright (C) 2014 Daniel Thompson <daniel@redfelineninja.org.uk>
- * Copyright (C) 2010 Gareth McMullin <gareth@blacksphere.co.nz>
- * Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
- * Copyright (C) 2013 Stephen Dwyer <scdwyer@ualberta.ca>
- * Copyright (C) 2014 Laurent Barattero <laurentba@larueluberlu.net>
  *
  *
  * This library is free software: you can redistribute it and/or modify
@@ -23,7 +16,34 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
+/*
+ * Date: 5.10.2017
+ * Version 2.0
+ *
+ * Converts Serial-MIDI to USB-MIDI
+ *
+ * USB is interrupt driven!
+ * Normaly USB-MIDI should have a BULK endpoint, but due to the fact that i want it to be
+ * interrupt driven I used an INTERRUPT endpoint (PC -> converter).
+ * converter -> PC still BULK endpoint.
+ *
+ * UART RX is also interrupt driven.
+ */
+
+
+/*
+ * All references in this file come from Universal Serial Bus Device Class
+ * Definition for MIDI Devices, release 1.0.
+ */
+
+
+
+
+
+
 #include <stdlib.h>
+#include <stdint.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/audio.h>
 #include <libopencm3/usb/midi.h>
@@ -43,45 +63,38 @@
 #include <libopencmsis/core_cm3.h>
 
 
+
+
+
 static usbd_device *usbd_dev;
 
-int rec = 0;
 
-static int midicmd = 0;
-static int midipar1 = 0;
-static int midipar2 = 0;
+void usb_isr(usbd_device *dev, uint8_t ep);
 
-/*
- * All references in this file come from Universal Serial Bus Device Class
- * Definition for MIDI Devices, release 1.0.
- */
 
-/*
- * Table B-1: MIDI Adapter Device Descriptor
- */
 static const struct usb_device_descriptor dev_descr = {
-	.bLength = USB_DT_DEVICE_SIZE,
-	.bDescriptorType = USB_DT_DEVICE,
-	.bcdUSB = 0x0200,    /* was 0x0110 in Table B-1 example descriptor */
-	.bDeviceClass = 0,   /* device defined at interface level */
-	.bDeviceSubClass = 0,
-	.bDeviceProtocol = 0,
-	.bMaxPacketSize0 = 64,
-	.idVendor = 0x6666,  /* Prototype product vendor ID */
-	.idProduct = 0x5119, /* dd if=/dev/random bs=2 count=1 | hexdump */
-	.bcdDevice = 0x0100,
-	.iManufacturer = 1,  /* index to string desc */
-	.iProduct = 2,       /* index to string desc */
-	.iSerialNumber = 3,  /* index to string desc */
-	.bNumConfigurations = 1,
+	.bLength = USB_DT_DEVICE_SIZE,     /*Type: uint8_t   Size: 1   Description: Size of this descriptor in bytes*/
+	.bDescriptorType = USB_DT_DEVICE,  /*Type: uint8_t   Size: 1   Descriptor: Device Descriptor Type = 1*/
+	.bcdUSB = 0x0200,        /*Type: uint16_t   Size: 2   Description: This field identifies the release of the USB Specification with which the device and its descriptors are compliant. */
+	.bDeviceClass = 0,        /*Type: uint8_t   Size: 1   Description: Class code (assigned by the USB-IF)   0 = each interface within a configuration specifies its own class information and the various interfaces operate independently.*/
+	.bDeviceSubClass = 0,     /*Type: uint8_t   Size: 1   Description: Subclass code (assigned by the USB-IF)   if bDeviceClass = 0 then bDeviceSubClass = 0*/
+	.bDeviceProtocol = 0,     /*Type: uint8_t   Size: 1   Description: Protocol code (assigned by the USB-IF)   0 = the device does not use class specific protocols on a device basis. However, it may use class specific protocols on an interface basis*/
+	.bMaxPacketSize0 = 64,    /*Type: uint8_t   Size: 1   Description: Maximum packet size for Endpoint zero (only 8, 16, 32, or 64 are valid)*/
+	.idVendor = 0x6666,      /*Type: uint16_t   Size: 2   Description: Vendor ID (assigned by the USB-IF)*/
+	.idProduct = 0x5119,     /*Type: uint16_t   Size: 2   Description: Product ID (assigned by the manufacturer)*/
+	.bcdDevice = 0x0100,     /*Type: uint16_t   Size: 2   Description: Device release number in binary-coded decimal*/
+	.iManufacturer = 1,       /*Type: uint8_t   Size: 1   Description: Index of string descriptor describing manufacturer*/
+	.iProduct = 2,            /*Type: uint8_t   Size: 1   Description: Index of string descriptor describing product*/
+	.iSerialNumber = 3,       /*Type: uint8_t   Size: 1   Description: Index of string descriptor describing the device's serial number*/
+	.bNumConfigurations = 1,  /*Type: uint8_t   Size: 1   Description: Number of possible configurations*/
 };
 
 /*
  * Midi specific endpoint descriptors.
  */
-static const struct usb_midi_endpoint_descriptor midi_bulk_endp[] = {{
+static const struct usb_midi_endpoint_descriptor midi_usb_endp[] = {{
 	/* Table B-12: MIDI Adapter Class-specific Bulk OUT Endpoint
-	 * Descriptor
+	 * Descriptor, but we use an Interrupt driven Endpoint
 	 */
 	.head = {
 		.bLength = sizeof(struct usb_midi_endpoint_descriptor),
@@ -110,27 +123,76 @@ static const struct usb_midi_endpoint_descriptor midi_bulk_endp[] = {{
 /*
  * Standard endpoint descriptors
  */
-static const struct usb_endpoint_descriptor bulk_endp[] = {{
-	/* Table B-11: MIDI Adapter Standard Bulk OUT Endpoint Descriptor */
-	.bLength = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = 0x01,
-	.bmAttributes = USB_ENDPOINT_ATTR_BULK,
-	.wMaxPacketSize = 0x40,
-	.bInterval = 0x00,
+static const struct usb_endpoint_descriptor usb_endp[] = {{
+	/* Table B-11: MIDI Adapter Standard Bulk OUT Endpoint Descriptor, but we use an Interrupt driven Endpoint*/
+	.bLength = USB_DT_ENDPOINT_SIZE,    /*Type: uint8_t   Size: 1   Descriptor: Size of this descriptor in bytes*/
+	.bDescriptorType = USB_DT_ENDPOINT, /*Type: uint8_t   Size: 1   Descriptor: Endpoint Descriptor Type = 5. */
+	.bEndpointAddress = 0x01,           /*Type: uint8_t   Size: 1   Descriptor: The address of the endpoint on the USB device described by this descriptor. The address is encoded as follows:  0-3: The endpoint number   4-6: Reserved, reset to zero   7: Direction, ignored for control endpoints -> 0 = OUT   1 = IN*/
+	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,  /*Type: uint8_t   Size: 1
+Description:
 
-	.extra = &midi_bulk_endp[0],
-	.extralen = sizeof(midi_bulk_endp[0])
+The endpoint attribute when configured through bConfigurationValue.
+    Bits 1..0: Transfer Type
+        00 = Control
+        01 = Isochronous
+        10 = Bulk
+        11 = Interrupt
+
+For non-isochronous endpoints, bits 5..2 must be set to zero. For isochronous endpoints, they are defined as:
+
+    Bits 3..2: Synchronization Type
+        00 = No Synchronization
+        01 = Asynchronous
+        10 = Adaptive
+        11 = Synchronous
+    Bits 5..4: Usage Type
+        00 = Data
+        01 = Feedback
+        10 = Implicit feedback
+        11 = Reserved
+
+All other bits are reserved and must be reset to zero. */
+
+
+	.wMaxPacketSize = 0x40, /*Type: uint16_t   Size: 2
+Description:
+
+Is the maximum packet size of this endpoint. For isochronous endpoints, this value is used to reserve the time on the bus, required for the per-(micro)frame data payloads.
+
+    Bits 10..0 = max. packet size (in bytes).
+
+For high-speed isochronous and interrupt endpoints:
+
+    Bits 12..11 = number of additional transaction opportunities per micro-frame:
+        00 = None (1 transaction per micro-frame)
+        01 = 1 additional (2 per micro-frame)
+        10 = 2 additional (3 per micro-frame)
+        11 = Reserved
+    Bits 15..13 are reserved and must be set to zero. */
+
+
+	.bInterval = 0x00, /*Type: uint8_t   Size: 1
+Description:
+
+Interval for polling endpoint for data transfers. Expressed in frames or micro-frames depending on the operating speed (1ms, or 125μs units).
+
+    For full-/high-speed isochronous endpoints, this value must be in the range from 1 to 16. The bInterval value is used as the exponent for a 2bInterval-1 value; For example, a bInterval of 4 means a period of 8 (24-1).
+    For full-/low-speed interrupt endpoints, the value of this field may be from 1 to 255.
+    For high-speed interrupt endpoints, the bInterval value is used as the exponent for a 2bInterval-1 value; For Example, a bInterval of 4 means a period of 8 (24-1). This value must be from 1 to 16.
+    For high-speed bulk/control OUT endpoints, the bInterval must specify the maximum NAK rate of the endpoint. A value of 0 indicates the endpoint never NAKs. Other values indicate at most 1 NAK each bInterval number of microframes. This value must be in the range from 0 to 255.*/
+
+	.extra = &midi_usb_endp[0],		/*Needed?*/
+	.extralen = sizeof(midi_usb_endp[0])	/*Needed?*/
 }, {
-	.bLength = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = 0x81,
-	.bmAttributes = USB_ENDPOINT_ATTR_BULK,
-	.wMaxPacketSize = 0x40,
-	.bInterval = 0x00,
+	.bLength = USB_DT_ENDPOINT_SIZE,         /*Look above*/
+	.bDescriptorType = USB_DT_ENDPOINT,      /*Look above*/
+	.bEndpointAddress = 0x81,		 /*Look above*/
+	.bmAttributes = USB_ENDPOINT_ATTR_BULK,  /*Look above*/
+	.wMaxPacketSize = 0x40,			 /*Look above*/
+	.bInterval = 0x00,			 /*Look above*/
 
-	.extra = &midi_bulk_endp[1],
-	.extralen = sizeof(midi_bulk_endp[1])
+	.extra = &midi_usb_endp[1],		/*Needed?*/
+	.extralen = sizeof(midi_usb_endp[1])	/*Needed?*/
 } };
 
 /*
@@ -262,7 +324,7 @@ static const struct usb_interface_descriptor midi_streaming_iface[] = {{
 	.bInterfaceProtocol = 0,
 	.iInterface = 0,
 
-	.endpoint = bulk_endp,
+	.endpoint = usb_endp,
 
 	.extra = &midi_streaming_functional_descriptors,
 	.extralen = sizeof(midi_streaming_functional_descriptors)
@@ -293,10 +355,11 @@ static const struct usb_config_descriptor config = {
 	.interface = ifaces,
 };
 
+/*USB Strings (Look at USB-Device-Descriptor)*/
 static const char * usb_strings[] = {
-	"Hold-Solutions.com",
-	"Alex Hold | Serial -> MIDI",
-	"AHSM00001\0"
+	"Hold-Solutions.com",		/*Manufacturer*/
+	"Alex Hold | Serial -> MIDI",	/*Product*/
+	"AHSM00001\0"			/*SerialNumber*/
 };
 
 /* Buffer to be used for control requests. */
@@ -328,74 +391,86 @@ const uint8_t sysex_identity[] = {
 
 
 
-static void usbmidi_data_rx_cb(usbd_device *dev, uint8_t ep)
-{
-	(void)ep;
 
 
-	char buf[64];
-	int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
+/*FIFO*/
+typedef struct {
+	uint8_t *read;	/*Read pointer*/
+	uint8_t *write; /*Write pointer*/
+	size_t size;	/*Size of the FIFO*/
+	uint8_t *start; /*Start adress pointer*/
+	uint8_t *end;	/*End adress pointer*/
+	uint8_t data;   /*current data (read return)*/
+	uint8_t empty;  /*is the FIFO empty -> 1=yes 0=no*/
+} FIFO;
 
-	if (len) {
 
-		usart_send_blocking(USART1, buf[1]);
-		usart_send_blocking(USART1, buf[2]);
-		usart_send_blocking(USART1, buf[3]);
+FIFO FIFO_setup(FIFO fifo, size_t size){
+	fifo.size = size;
+	fifo.start = malloc(fifo.size * sizeof(uint8_t));	/*8 bit, because MIDI packets are 8 bit long*/
+	fifo.end = fifo.start + size;
+	fifo.write = fifo.start;
+	fifo.read = fifo.start;
+	return fifo;
+}
 
+FIFO FIFO_write(FIFO fifo, uint8_t data){
+	if(fifo.write == fifo.end){
+		if(fifo.read != fifo.start){
+			fifo.write = fifo.start;
+		}else{
+			//FIFO full
+			return fifo;
+		}
+	}else{
+		if((fifo.write + 1) != fifo.read){ 
+			fifo.write = fifo.write + 1;
+		}else{
+			//FIFO full
+			return fifo;
+		}
 	}
+	*fifo.write = data;
+	return fifo;
+}
 
+
+FIFO FIFO_read(FIFO fifo){
+	if(fifo.read == fifo.end){
+		if(fifo.write != fifo.end){
+			fifo.read = fifo.start;
+		}else{
+			//FIFO empty
+			fifo.empty = 1;
+			return fifo;
+		}
+	}else{
+		if(fifo.read != fifo.write){	//other types 
+			fifo.read = fifo.read + 1;
+		}else{
+			//FIFO empty
+			fifo.empty = 1;
+			return fifo;
+		}
+	}
+	fifo.data = *fifo.read;  /*write the read pointer into the data var*/
+	fifo.empty = 0;		 /*set fifo = not empty*/
+	return fifo;
 }
 
 
 
 
 
-static void usbmidi_set_config(usbd_device *dev, uint16_t wValue)
-{
-	
-	(void)wValue;
 
-	usbd_ep_setup(dev, 0x01, USB_ENDPOINT_ATTR_BULK, 64,
-			usbmidi_data_rx_cb);
-	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_BULK, 64, NULL);
-
-	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
-	systick_set_reload(99999);
-	systick_interrupt_enable();
-	systick_counter_enable();
-
-}
-
-static void button_send_event(usbd_device *dev, int pressed)
-{
-
-
-	char buf[4] = { 0x08, // USB framing: virtual cable 0, note on 
-			midicmd,
-			midipar1,
-			midipar2
-	};
-
-
-	buf[0] |= pressed;
-
-	while (usbd_ep_write_packet(dev, 0x81, buf, sizeof(buf)) == 0);
-}
-
-
-
-static void usart_setup(void)
-{
-
+static void uart_setup(void) {
 	nvic_enable_irq(NVIC_USART1_IRQ);
 
 	/* Setup GPIO pin GPIO_USART1_RE_TX on GPIO port B for transmit. */
-	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
+	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
 
-	/* Setup GPIO pin GPIO_USART1_RE_RX on GPIO port B for receive. */
-	gpio_set_mode(GPIOA, GPIO_MODE_INPUT,
-		      GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
+	/* Setup GPIO pin GPIO_USART1_RE_RX on GPIO port B for rceive. */
+	gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
 
 	/* Setup UART parameters. */
 	usart_set_baudrate(USART1, 115200);
@@ -410,96 +485,79 @@ static void usart_setup(void)
 
 	/* Finally enable the USART. */
 	usart_enable(USART1);
-
-	
 }
 
+static void usb_setup(usbd_device *dev, uint16_t wValue)
+{
 
+	(void)wValue;
 
+	/* Setup USB Receive interrupt. */
+	usbd_ep_setup(dev, 0x01, USB_ENDPOINT_ATTR_INTERRUPT, 64, usb_isr);
+
+	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_BULK, 64, NULL);
+
+	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
+	systick_set_reload(99999);
+	systick_interrupt_enable();
+	systick_counter_enable();
+
+}
+
+void usb_lp_can_rx0_isr(void) {
+    	usbd_poll(usbd_dev);
+}
 
 void usart1_isr(void)
 {
 	static uint8_t data = 'A';
+	//data = usart_recv(USART1);
+}
 
-	/* Check if we were called because of RXNE. */
-	if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) &&
-	    ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
+void usb_isr(usbd_device *dev, uint8_t ep){
+	(void)ep;
 
-		
-
-
-		/* Retrieve the data from the peripheral. */
-		data = usart_recv(USART1);
-		
-
-		if(data > 127){
-			rec = 1;
-			midicmd = data;
-		}else{
-			if(rec == 2){
-				midipar2 = data;
-				rec = 0;
-				gpio_toggle(GPIOC, GPIO13);
-				button_send_event(usbd_dev, 1);
-			}
-			if(rec == 1){
-				midipar1 = data;
-				rec = 2;
-			}
-
-		}
-
-		/* Enable transmit interrupt so it sends back the data. */
-		USART_CR1(USART1) |= USART_CR1_TXEIE;
-	}
-
-	/* Check if we were called because of TXE. */
-	if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) &&
-	    ((USART_SR(USART1) & USART_SR_TXE) != 0)) {
+	char buf[64];
+	int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
+	gpio_toggle(GPIOC, GPIO13); 
+}
 
 
-		/* Disable the TXE interrupt as we don't need it anymore. */
-		USART_CR1(USART1) &= ~USART_CR1_TXEIE;
+
+void loop(){
+	while(1){
+		__asm__("nop");
 	}
 }
 
 
 
+FIFO uart_FIFO;		/*UART FIFO -> UART writes in this FIFO*/
+FIFO usb_FIFO;		/*USB FIFO -> USB writes in this FIFO*/
+
+
 int main(void)
 {
-	//usbd_device *usbd_dev;
-
 	rcc_clock_setup_in_hse_8mhz_out_72mhz();
+
 
 	rcc_periph_clock_enable(RCC_GPIOA);
 	rcc_periph_clock_enable(RCC_GPIOC);
 	rcc_periph_clock_enable(RCC_GPIOB);
-
 	rcc_periph_clock_enable(RCC_USART1);
 
-	usart_setup();
+	uart_FIFO = FIFO_setup(uart_FIFO, 64);
+	usb_FIFO = FIFO_setup(usb_FIFO, 64);
 
-	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+	uart_setup();
 
+	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 	gpio_set(GPIOC, GPIO13);
 
-	// parallel debug out
-	gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO8|GPIO9|GPIO10|GPIO11|GPIO12|GPIO13|GPIO14|GPIO15);
+	nvic_enable_irq(NVIC_USB_LP_CAN_RX0_IRQ);
+
+	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config,usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+	usbd_register_set_config_callback(usbd_dev, usb_setup);
 
 
-
-	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config,
-			usb_strings, 3,
-			usbd_control_buffer, sizeof(usbd_control_buffer));
-
-	usbd_register_set_config_callback(usbd_dev, usbmidi_set_config);
-
-
-
-	gpio_toggle(GPIOC, GPIO13); 
-	while (1) {
-		usbd_poll(usbd_dev);
-	}
 }
