@@ -130,16 +130,13 @@ static const struct usb_endpoint_descriptor usb_endp[] = {{
 	.bEndpointAddress = 0x01,           /*Type: uint8_t   Size: 1   Descriptor: The address of the endpoint on the USB device described by this descriptor. The address is encoded as follows:  0-3: The endpoint number   4-6: Reserved, reset to zero   7: Direction, ignored for control endpoints -> 0 = OUT   1 = IN*/
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,  /*Type: uint8_t   Size: 1
 Description:
-
 The endpoint attribute when configured through bConfigurationValue.
     Bits 1..0: Transfer Type
         00 = Control
         01 = Isochronous
         10 = Bulk
         11 = Interrupt
-
 For non-isochronous endpoints, bits 5..2 must be set to zero. For isochronous endpoints, they are defined as:
-
     Bits 3..2: Synchronization Type
         00 = No Synchronization
         01 = Asynchronous
@@ -150,19 +147,14 @@ For non-isochronous endpoints, bits 5..2 must be set to zero. For isochronous en
         01 = Feedback
         10 = Implicit feedback
         11 = Reserved
-
 All other bits are reserved and must be reset to zero. */
 
 
 	.wMaxPacketSize = 0x40, /*Type: uint16_t   Size: 2
 Description:
-
 Is the maximum packet size of this endpoint. For isochronous endpoints, this value is used to reserve the time on the bus, required for the per-(micro)frame data payloads.
-
     Bits 10..0 = max. packet size (in bytes).
-
 For high-speed isochronous and interrupt endpoints:
-
     Bits 12..11 = number of additional transaction opportunities per micro-frame:
         00 = None (1 transaction per micro-frame)
         01 = 1 additional (2 per micro-frame)
@@ -173,9 +165,7 @@ For high-speed isochronous and interrupt endpoints:
 
 	.bInterval = 0x00, /*Type: uint8_t   Size: 1
 Description:
-
 Interval for polling endpoint for data transfers. Expressed in frames or micro-frames depending on the operating speed (1ms, or 125μs units).
-
     For full-/high-speed isochronous endpoints, this value must be in the range from 1 to 16. The bInterval value is used as the exponent for a 2bInterval-1 value; For example, a bInterval of 4 means a period of 8 (24-1).
     For full-/low-speed interrupt endpoints, the value of this field may be from 1 to 255.
     For high-speed interrupt endpoints, the bInterval value is used as the exponent for a 2bInterval-1 value; For Example, a bInterval of 4 means a period of 8 (24-1). This value must be from 1 to 16.
@@ -524,7 +514,7 @@ void usb_isr(usbd_device *dev, uint8_t ep){
 
 
 
-void loop(){
+static void loop(void){
 	while(1){
 		__asm__("nop");
 	}
@@ -559,6 +549,6 @@ int main(void)
 
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config,usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, usb_setup);
-
-
+	
+	loop();
 }
