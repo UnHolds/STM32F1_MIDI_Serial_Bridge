@@ -1,11 +1,11 @@
-#Status
-Not working!
-
 
 # STM32F1 MIDI Serial Bridge
 This code is a firmware for the STM32F1 that provides a MIDI-USB -> MIDI-Serial Converter and a MIDI-Serial -> MIDI-USB Converter.
 It can be used with the Arduino MIDI library.
 
+
+# Status
+not working!
 
 ## Usage
 The pins for the serial communication are A9 (Serial1 TX) and A10 (Serial RX).	[USART1]
