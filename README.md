@@ -1,3 +1,6 @@
+#Status
+Not working!
+
 
 # STM32F1 MIDI Serial Bridge
 This code is a firmware for the STM32F1 that provides a MIDI-USB -> MIDI-Serial Converter and a MIDI-Serial -> MIDI-USB Converter.

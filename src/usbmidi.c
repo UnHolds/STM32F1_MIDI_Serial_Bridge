@@ -445,7 +445,7 @@ FIFO FIFO_read(FIFO fifo){
 			return fifo;
 		}
 	}else{
-		if(fifo.read != fifo.write){	//other types 
+		if(fifo.read != fifo.write){
 			fifo.read = fifo.read + 1;
 		}else{
 			//FIFO empty
@@ -546,6 +546,7 @@ int main(void)
 	rcc_periph_clock_enable(RCC_GPIOB);
 	rcc_periph_clock_enable(RCC_USART1);
 
+	/*FIFO Setup*/
 	uart_FIFO = FIFO_setup(uart_FIFO, 64);
 	usb_FIFO = FIFO_setup(usb_FIFO, 64);
 
