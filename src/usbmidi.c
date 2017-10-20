@@ -395,7 +395,7 @@ typedef struct {
 } FIFO;
 
 
-FIFO FIFO_setup(FIFO fifo, size_t size){
+static FIFO FIFO_setup(FIFO fifo, size_t size){
 	fifo.size = size;
 	fifo.start = malloc(fifo.size * sizeof(uint8_t));	/*8 bit, because MIDI packets are 8 bit long*/
 	fifo.end = fifo.start + size;
@@ -404,7 +404,7 @@ FIFO FIFO_setup(FIFO fifo, size_t size){
 	return fifo;
 }
 
-FIFO FIFO_write(FIFO fifo, uint8_t data){
+static FIFO FIFO_write(FIFO fifo, uint8_t data){
 	if(fifo.write == fifo.end){
 		if(fifo.read != fifo.start){
 			fifo.write = fifo.start;
@@ -425,7 +425,7 @@ FIFO FIFO_write(FIFO fifo, uint8_t data){
 }
 
 
-FIFO FIFO_read(FIFO fifo){
+static FIFO FIFO_read(FIFO fifo){
 	if(fifo.read == fifo.end){
 		if(fifo.write != fifo.end){
 			fifo.read = fifo.start;
