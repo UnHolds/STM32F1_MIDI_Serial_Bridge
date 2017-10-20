@@ -392,7 +392,13 @@ typedef struct {
 	uint8_t *end;	/*End adress pointer*/
 	uint8_t data;   /*current data (read return)*/
 	uint8_t empty;  /*is the FIFO empty -> 1=yes 0=no*/
+	uint8_t midi_commands; /*number of midi commands (1 command = 3 8bit)*/
 } FIFO;
+
+
+
+static FIFO uart_FIFO;		/*UART FIFO -> UART writes in this FIFO*/
+static FIFO usb_FIFO;		/*USB FIFO -> USB writes in this FIFO*/
 
 
 static FIFO FIFO_setup(FIFO fifo, size_t size){
@@ -498,10 +504,21 @@ void usb_lp_can_rx0_isr(void) {
     	usbd_poll(usbd_dev);
 }
 
+
+uint8_t midi_counter = 0;
 void usart1_isr(void)
 {
+	
 	static uint8_t data = 'A';
-	//data = usart_recv(USART1);
+	data = usart_recv(USART1);
+
+	midi_counter++;
+	uart_FIFO = FIFO_write(uart_FIFO, data);
+
+	if(midi_counter == 3){
+		uart_FIFO.midi_commands = uart_FIFO.midi_commands + 1;
+		midi_counter = 0;
+	}
 }
 
 void usb_isr(usbd_device *dev, uint8_t ep){
@@ -514,16 +531,59 @@ void usb_isr(usbd_device *dev, uint8_t ep){
 
 
 
+static void usb_send(usbd_device *dev){
+
+	uart_FIFO = FIFO_read(uart_FIFO);
+
+	if(uart_FIFO.empty == 1){
+		//Error!
+		return;
+	}
+
+	uint8_t midi_command = uart_FIFO.data;
+
+
+	uart_FIFO = FIFO_read(uart_FIFO);
+
+	if(uart_FIFO.empty == 1){
+		//Error!
+		return;
+	}
+	
+	uint8_t midi_note = uart_FIFO.data;
+
+
+	uart_FIFO = FIFO_read(uart_FIFO);
+
+	if(uart_FIFO.empty == 1){
+		//Error!
+		return;
+	}
+
+	uint8_t midi_velocity = uart_FIFO.data;
+	
+	char buf[4] = {
+		0x08,
+		midi_command,
+		midi_note,
+		midi_velocity
+	};
+
+	while (usbd_ep_write_packet(dev, 0x81, buf, sizeof(buf)) == 0);
+
+}
+
+
 static void loop(void){
 	while(1){
+		if(uart_FIFO.midi_commands > 0){
+			usb_send(usbd_dev);
+			uart_FIFO.midi_commands = uart_FIFO.midi_commands - 1; 
+		}
 		__asm__("nop");
 	}
 }
 
-
-
-FIFO uart_FIFO;		/*UART FIFO -> UART writes in this FIFO*/
-FIFO usb_FIFO;		/*USB FIFO -> USB writes in this FIFO*/
 
 
 int main(void)
