@@ -594,21 +594,34 @@ int main(void)
 	rcc_periph_clock_enable(RCC_GPIOA);
 	rcc_periph_clock_enable(RCC_GPIOC);
 	rcc_periph_clock_enable(RCC_GPIOB);
-	rcc_periph_clock_enable(RCC_USART1);
+	
 
 	/*FIFO Setup*/
 	uart_FIFO = FIFO_setup(uart_FIFO, 64);
 	usb_FIFO = FIFO_setup(usb_FIFO, 64);
-
-	uart_setup();
-
-	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
-	gpio_set(GPIOC, GPIO13);
 
 	nvic_enable_irq(NVIC_USB_LP_CAN_RX0_IRQ);
 
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config,usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, usb_setup);
 	
+	/*Wait for USB to register on the Pc*/
+	/*incoming uart data would kill the registration process if we would not wait*/
+	for (int i = 0; i < 0x800000; i++){
+		__asm__("nop");
+	}
+
+	/*Wait for USB Vbus.*/
+	while (gpio_get(GPIOA, GPIO8) == 0){
+		__asm__("nop");
+	}
+	
+	rcc_periph_clock_enable(RCC_USART1);
+	uart_setup();
+
+	/*Led of the STM32 board*/
+	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+	gpio_set(GPIOC, GPIO13);
+
 	loop();
 }
