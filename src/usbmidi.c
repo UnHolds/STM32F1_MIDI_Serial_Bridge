@@ -505,25 +505,26 @@ void usb_lp_can_rx0_isr(void) {
 }
 
 
-uint8_t midi_counter = 0;
+uint8_t uart_midi_counter = 0;
 void usart1_isr(void)
 {
 	
 	static uint8_t data = 'A';
 	data = usart_recv(USART1);
 
-	midi_counter++;
+	uart_midi_counter++;
 	uart_FIFO = FIFO_write(uart_FIFO, data);
 
-	if(midi_counter == 3){
-		uart_FIFO.midi_commands = uart_FIFO.midi_commands + 1;
-		midi_counter = 0;
+	if(uart_midi_counter == 3){
+		uart_FIFO.midi_commands++;
+		uart_midi_counter = 0;
 	}
 }
 
 void usb_isr(usbd_device *dev, uint8_t ep){
 	(void)ep;
-
+	
+	//TODO usb -> serial
 	char buf[64];
 	int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
 	gpio_toggle(GPIOC, GPIO13); 
@@ -533,6 +534,7 @@ void usb_isr(usbd_device *dev, uint8_t ep){
 
 static void usb_send(usbd_device *dev){
 
+	/*read command (command + channel) form FIFO*/
 	uart_FIFO = FIFO_read(uart_FIFO);
 
 	if(uart_FIFO.empty == 1){
@@ -543,6 +545,7 @@ static void usb_send(usbd_device *dev){
 	uint8_t midi_command = uart_FIFO.data;
 
 
+	/*read note from FIFO*/
 	uart_FIFO = FIFO_read(uart_FIFO);
 
 	if(uart_FIFO.empty == 1){
@@ -553,6 +556,7 @@ static void usb_send(usbd_device *dev){
 	uint8_t midi_note = uart_FIFO.data;
 
 
+	/*read velocity form FIFO*/
 	uart_FIFO = FIFO_read(uart_FIFO);
 
 	if(uart_FIFO.empty == 1){
@@ -561,12 +565,13 @@ static void usb_send(usbd_device *dev){
 	}
 
 	uint8_t midi_velocity = uart_FIFO.data;
-	
+
+	//MIDI Packet	
 	char buf[4] = {
 		0x08,
-		midi_command,
-		midi_note,
-		midi_velocity
+		midi_command,	/*command = command 3bit (ex. note on) + channel 4bit*/
+		midi_note,	/*note 0-127*/
+		midi_velocity	/*velocity 0 - 127*/
 	};
 
 	while (usbd_ep_write_packet(dev, 0x81, buf, sizeof(buf)) == 0);
@@ -578,7 +583,7 @@ static void loop(void){
 	while(1){
 		if(uart_FIFO.midi_commands > 0){
 			usb_send(usbd_dev);
-			uart_FIFO.midi_commands = uart_FIFO.midi_commands - 1; 
+			uart_FIFO.midi_commands--; 
 		}
 		__asm__("nop");
 	}
