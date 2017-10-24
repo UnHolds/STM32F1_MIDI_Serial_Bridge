@@ -7,3 +7,7 @@ LDSCRIPT = $(OPENCM3_DIR)/lib/stm32/f1/stm32f103x8.ld
 
 include ../libopencm3.target.mk
 
+all:
+	@st-util &
+	@gdb -x gdb_flash_script.gdbinit usbmidi.elf
+	@killall st-util

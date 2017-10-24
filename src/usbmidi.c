@@ -73,9 +73,14 @@ void usb_isr(usbd_device *dev, uint8_t ep);
 
 
 static const struct usb_device_descriptor dev_descr = {
-	.bLength = USB_DT_DEVICE_SIZE,     /*Type: uint8_t   Size: 1   Description: Size of this descriptor in bytes*/
-	.bDescriptorType = USB_DT_DEVICE,  /*Type: uint8_t   Size: 1   Descriptor: Device Descriptor Type = 1*/
-	.bcdUSB = 0x0200,        /*Type: uint16_t   Size: 2   Description: This field identifies the release of the USB Specification with which the device and its descriptors are compliant. */
+        /*Type: uint8_t   Size: 1   Description: Size of this descriptor in bytes*/
+        .bLength = USB_DT_DEVICE_SIZE,
+
+        /*Type: uint8_t   Size: 1   Descriptor: Device Descriptor Type = 1*/
+	.bDescriptorType = USB_DT_DEVICE,  
+
+        /*Type: uint16_t   Size: 2   Description: This field identifies the release of the USB Specification with which the device and its descriptors are compliant. */
+        .bcdUSB = 0x0200,        
 	.bDeviceClass = 0,        /*Type: uint8_t   Size: 1   Description: Class code (assigned by the USB-IF)   0 = each interface within a configuration specifies its own class information and the various interfaces operate independently.*/
 	.bDeviceSubClass = 0,     /*Type: uint8_t   Size: 1   Description: Subclass code (assigned by the USB-IF)   if bDeviceClass = 0 then bDeviceSubClass = 0*/
 	.bDeviceProtocol = 0,     /*Type: uint8_t   Size: 1   Description: Protocol code (assigned by the USB-IF)   0 = the device does not use class specific protocols on a device basis. However, it may use class specific protocols on an interface basis*/
@@ -526,11 +531,20 @@ void usb_isr(usbd_device *dev, uint8_t ep){
 	
 	//TODO usb -> serial
 	char buf[64];
-	int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
-	gpio_toggle(GPIOC, GPIO13); 
+	//int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
+
+        usbd_ep_read_packet(dev, 0x01, buf, 64);
+        
+        usb_FIFO = FIFO_write(usb_FIFO, buf[1]);
+        usb_FIFO = FIFO_write(usb_FIFO, buf[2]);
+        usb_FIFO = FIFO_write(usb_FIFO, buf[3]);
 }
 
 
+static void uart_send(void){
+
+        //TODO uart sending
+}
 
 static void usb_send(usbd_device *dev){
 
