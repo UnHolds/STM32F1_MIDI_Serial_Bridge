@@ -34,11 +34,28 @@ Go in the "src" folder:
 Build the firmware: 
 `make` -> *.elf
 
-or Build the bin firmware 
+
+## Flash 1
+
+# Current Makefile
+
+ST-util must be installed.
+
+Usage:
+
+	plug in the STM32 and run `make`
+	the script will compile and flash it to the stm32
+
+
+# For the Makefile.old
+
+remove the Makefile and rename the Makefile.old to Makefile
+
+or Build the bin firmware
 `make bin` -> *.bin
 
 
-## Flash
+## Flash 2
 Flash with st-utils
 
 
