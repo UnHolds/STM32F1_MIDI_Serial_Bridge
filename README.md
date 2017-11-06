@@ -1,14 +1,19 @@
 
 # STM32F1 MIDI Serial Bridge
-This code is a firmware for the STM32F1 that provides a MIDI-USB -> MIDI-Serial Converter and a MIDI-Serial -> MIDI-USB Converter.
+This code is a firmware for the STM32F1 that provides a
+MIDI-USB -> MIDI-Serial Converter and a MIDI-Serial -> MIDI-USB Converter.
 It can be used with the Arduino MIDI library.
 
 
 ## Status
-not working!
+working!
 
 ## Usage
-The pins for the serial communication are A9 (Serial1 TX) and A10 (Serial RX).	[USART1]
+The pins for the serial communication are A9 (Serial TX) and A10 (Serial RX).
+[USART1]
+
+connect those pins to your MIDI device, but if you connect it to a genuine
+midi device you must change the baudrate to 31250 (current 115200)
 
 
 ## Build
@@ -59,11 +64,13 @@ or Build the bin firmware
 Flash with st-utils
 
 
-Open terminl (terminal1) and go to your *.elf file then type: `arm-none-eabi-gdb file.elf`
+Open terminl (terminal1) and go to your *.elf file then type:
+`arm-none-eabi-gdb file.elf`
 
 Now open a new terminal (terminal2) and run the st-utils `st-util`
 
-go back to terminal1 and type: `tar extended-remote :4242` (4242 is the port st-util opens)
+go back to terminal1 and type: `tar extended-remote :4242`
+(4242 is the port st-util opens)
 
 now write the file to the stm32 (terminal1) `load`
 
