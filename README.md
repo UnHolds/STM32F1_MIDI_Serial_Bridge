@@ -35,9 +35,9 @@ Build the firmware:
 `make` -> *.elf
 
 
-## Flash 1
+## Current Makefile
 
-# Current Makefile
+### Flash 1
 
 ST-util must be installed.
 
@@ -47,7 +47,7 @@ Usage:
 	the script will compile and flash it to the stm32
 
 
-# For the Makefile.old
+## For the Makefile.old
 
 remove the Makefile and rename the Makefile.old to Makefile
 
@@ -55,7 +55,7 @@ or Build the bin firmware
 `make bin` -> *.bin
 
 
-## Flash 2
+### Flash 2
 Flash with st-utils
 
 
