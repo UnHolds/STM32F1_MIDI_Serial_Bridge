@@ -679,7 +679,7 @@ static void uart_setup(void) {
                       GPIO_USART1_RX);
 
 	/* Setup UART parameters. */
-	usart_set_baudrate(USART1, 115200);
+	usart_set_baudrate(USART1, 115200); /* Normal MIDI BAUD = 31250 */
 	usart_set_databits(USART1, 8);
 	usart_set_stopbits(USART1, USART_STOPBITS_1);
 	usart_set_parity(USART1, USART_PARITY_NONE);
@@ -710,6 +710,7 @@ static void usb_setup(usbd_device *dev, uint16_t wValue)
 
 }
 
+/* poll USB on interruptg */
 void usb_lp_can_rx0_isr(void) {
     	usbd_poll(usbd_dev);
 }
@@ -718,7 +719,7 @@ void usb_lp_can_rx0_isr(void) {
 uint8_t uart_midi_counter = 0;
 void usart1_isr(void)
 {
-	
+        /*A is just a placeholder*/
 	static uint8_t data = 'A';
 	data = usart_recv(USART1);
 
@@ -732,23 +733,58 @@ void usart1_isr(void)
 }
 
 void usb_isr(usbd_device *dev, uint8_t ep){
-	(void)ep;
-	
-	//TODO usb -> serial and test
+	(void)ep;	
 	char buf[64];
-	//int len = usbd_ep_read_packet(dev, 0x01, buf, 64);
-
+        
         usbd_ep_read_packet(dev, 0x01, buf, 64);
         
-        usb_FIFO = FIFO_write(usb_FIFO, buf[1]);
-        usb_FIFO = FIFO_write(usb_FIFO, buf[2]);
-        usb_FIFO = FIFO_write(usb_FIFO, buf[3]);
+        usb_FIFO = FIFO_write(usb_FIFO, buf[1]); /* MIDI command */
+        usb_FIFO = FIFO_write(usb_FIFO, buf[2]); /* MIDI note */
+        usb_FIFO = FIFO_write(usb_FIFO, buf[3]); /* MIDI velocity */
+        usb_FIFO.midi_commands++;
 }
 
 
 static void uart_send(void){
+        
 
-        //TODO uart sending
+         /* read command (command + channel) form FIFO */
+	 usb_FIFO = FIFO_read(usb_FIFO);
+
+	 if(usb_FIFO.empty == 1){
+		/* Error! */
+		return;
+	 }
+
+	 uint8_t midi_command = usb_FIFO.data;
+
+
+	 /* read note from FIFO */
+	 usb_FIFO = FIFO_read(usb_FIFO);
+
+	 if(usb_FIFO.empty == 1){
+		/* Error */
+		return;
+	 }
+	
+	 uint8_t midi_note = usb_FIFO.data;
+
+
+	 /* read velocity form FIFO */
+	 usb_FIFO = FIFO_read(usb_FIFO);
+
+	 if(usb_FIFO.empty == 1){
+		/* Error! */
+	 	return;
+	 }
+
+	 uint8_t midi_velocity = usb_FIFO.data;
+
+         /* send signal over uart */
+         usart_send_blocking(USART1, midi_command);
+       	 usart_send_blocking(USART1, midi_note);
+         usart_send_blocking(USART1, midi_velocity);
+
 }
 
 static void usb_send(usbd_device *dev){
@@ -806,10 +842,19 @@ static void usb_send(usbd_device *dev){
 
 static void loop(void){
 	while(1){
+
+                /* uart -> usb */
 		if(uart_FIFO.midi_commands > 0){
 			usb_send(usbd_dev);
 			uart_FIFO.midi_commands--; 
 		}
+
+                /* usb -> uart*/
+                if(usb_FIFO.midi_commands > 0){
+                        uart_send();
+                        usb_FIFO.midi_commands--;
+                }
+                
 		__asm__("nop");
 	}
 }
@@ -853,7 +898,7 @@ int main(void)
 	rcc_periph_clock_enable(RCC_USART1);
 	uart_setup();
 
-	/* Led of the STM32 board */
+	/* Led of the STM32 board (not used, but good for debug) */
 	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL,
                       GPIO13);
         

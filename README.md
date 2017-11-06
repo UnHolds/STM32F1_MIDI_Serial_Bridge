@@ -4,7 +4,7 @@ This code is a firmware for the STM32F1 that provides a MIDI-USB -> MIDI-Serial 
 It can be used with the Arduino MIDI library.
 
 
-# Status
+## Status
 not working!
 
 ## Usage
@@ -43,8 +43,8 @@ ST-util must be installed.
 
 Usage:
 
-	plug in the STM32 and run `make`
-	the script will compile and flash it to the stm32
+plug in the STM32 and run `make`
+the script will compile and flash it to the stm32
 
 
 ## For the Makefile.old
