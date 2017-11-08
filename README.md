@@ -33,6 +33,10 @@ Go into the "libopencm3" folder:
 Build "libopencm3": 
 `make`
 
+If `make` doesn't work you may are missing the arm toolchain
+to install the arm toolchain use this command (Ubuntu)
+`sudo apt install gcc-arm-none-eabi`
+
 Go in the "src" folder: 
 `cd ../src/`
 
