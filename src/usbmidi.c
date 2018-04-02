@@ -121,17 +121,17 @@ static const struct usb_device_descriptor dev_descr = {
         /* Type: uint16_t   Size: 2   
          * Description: Vendor ID (assigned by the USB-IF)
          */
-	.idVendor = 0x6666,
+	.idVendor = 0x0666,
 
         /* Type: uint16_t   Size: 2   
          * Description: Product ID (assigned by the manufacturer)
          */
-	.idProduct = 0x5119,
+	.idProduct = 0x0815,
 
         /* Type: uint16_t   Size: 2   
          * Description: Device release number in binary-coded decimal
          */
-	.bcdDevice = 0x0100,
+	.bcdDevice = 0x0101,
 
         /* Type: uint8_t   Size: 1   
          * Description: Index of string descriptor describing manufacturer
@@ -285,7 +285,7 @@ static const struct usb_endpoint_descriptor usb_endp[] = {{
          *          Other values indicate at most 1 NAK each bInterval number 
          *          of microframes. This value must be in the range 
          *          from 0 to 255.*/
-	.bInterval = 0x00, 
+	.bInterval = 0x02,
 
         /* Needed? */
 	.extra = &midi_usb_endp[0],
@@ -309,7 +309,7 @@ static const struct usb_endpoint_descriptor usb_endp[] = {{
 	.wMaxPacketSize = 0x40,
 
         /* Look above */
-	.bInterval = 0x00,			 
+	.bInterval = 0x00, 			 
 
         /* Needed? */
 	.extra = &midi_usb_endp[1],
@@ -341,7 +341,7 @@ static const struct {
 };
 
 
-/* Table B-3: MIDI Adapter Standard AC Interface Descriptor */
+/* MIDI Adapter Standard AC Interface Descriptor */
 static const struct usb_interface_descriptor audio_control_iface[] = {{
 	.bLength = USB_DT_INTERFACE_SIZE,
 	.bDescriptorType = USB_DT_INTERFACE,
@@ -450,16 +450,19 @@ static const struct usb_interface_descriptor midi_streaming_iface[] = {{
 } };
 
 
-static const struct usb_interface ifaces[] = {{
-	.num_altsetting = 1,
-	.altsetting = audio_control_iface,
-}, {
-	.num_altsetting = 1,
-	.altsetting = midi_streaming_iface,
-} };
+static const struct usb_interface ifaces[] = {
+        {
+                .num_altsetting = 1,
+                .altsetting = audio_control_iface,
+        },
+        {
+                .num_altsetting = 1,
+                .altsetting = midi_streaming_iface,
+        }
+};
 
 
-/* Table B-2: MIDI Adapter Configuration Descriptor */
+/* Configuration Descriptor */
 static const struct usb_config_descriptor config = {
 	.bLength = USB_DT_CONFIGURATION_SIZE,
 	.bDescriptorType = USB_DT_CONFIGURATION,
@@ -476,7 +479,7 @@ static const struct usb_config_descriptor config = {
 
         /* bus powered */
 	.bmAttributes = 0x80, 
-	.bMaxPower = 0x32,
+	.bMaxPower = 0x64,
 
 	.interface = ifaces,
 };

@@ -9,5 +9,5 @@ include ../libopencm3.target.mk
 
 all:
 	@st-util &
-	@gdb -x gdb_flash_script.gdbinit usbmidi.elf
+	@arm-none-eabi-gdb -x gdb_flash_script.gdbinit usbmidi.elf
 	@killall st-util
