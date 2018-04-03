@@ -49,17 +49,18 @@ Build the firmware:
 
 ## Current Makefile
 
-### Flash 1
 
 ST-util must be installed.
 
 Usage:
 
 plug in the STM32 and run `make`
-the script will compile and flash it to the stm32
+the script will compile the code and flash the binary file to the stm32
 
 
 ## For the Makefile.old
+
+### Build
 
 remove the Makefile and rename the Makefile.old to Makefile
 
@@ -67,7 +68,7 @@ or Build the bin firmware
 `make bin` -> *.bin
 
 
-### Flash 2
+### Flash
 Flash with st-utils
 
 
