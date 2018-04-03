@@ -34,11 +34,11 @@ Build "libopencm3":
 `make`
 
 If make isn't installed, you can install it with the following command (Ubuntu)
-`sudo apt install make`
+ `sudo apt install make`
 
 If `make` doesn't work you may are missing the arm toolchain
 to install the arm toolchain use this command (Ubuntu)
-`sudo apt install gcc-arm-none-eabi`
+ `sudo apt install gcc-arm-none-eabi`
 
 Go in the "src" folder: 
 `cd ../src/`
@@ -72,7 +72,7 @@ or Build the bin firmware
 Flash with st-utils
 
 
-Open terminl (terminal1) and go to your *.elf file then type:
+Open a terminal (terminal1) and go to your *.elf file then type:
 `arm-none-eabi-gdb file.elf`
 
 Now open a new terminal (terminal2) and run the st-utils `st-util`
