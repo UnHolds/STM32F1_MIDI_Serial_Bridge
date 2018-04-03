@@ -33,6 +33,9 @@ Go into the "libopencm3" folder:
 Build "libopencm3": 
 `make`
 
+If make isn't installed, you can install it with the following command (Ubuntu)
+`sudo apt install make`
+
 If `make` doesn't work you may are missing the arm toolchain
 to install the arm toolchain use this command (Ubuntu)
 `sudo apt install gcc-arm-none-eabi`
