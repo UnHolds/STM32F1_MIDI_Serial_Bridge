@@ -19,7 +19,7 @@
 
 /*
  * Date: 5.10.2017
- * Version 2.0
+ * Version 2.3
  *
  * Converts Serial-MIDI to USB-MIDI
  *
@@ -289,10 +289,10 @@ static const struct usb_endpoint_descriptor usb_endp[] = {{
          *          from 0 to 255.*/
 	.bInterval = 0x02,
 
-        /* Needed? */
+        /* Field for the extra Descriptor needed for an MIDI Endpoint */
 	.extra = &midi_usb_endp[0],
 
-        /* Needed? */
+        /* length of the extra Descriptor */
 	.extralen = sizeof(midi_usb_endp[0])	
 }, {
         /* Look above */
@@ -313,10 +313,10 @@ static const struct usb_endpoint_descriptor usb_endp[] = {{
         /* Look above */
 	.bInterval = 0x00, 			 
 
-        /* Needed? */
+        /* Look above */
 	.extra = &midi_usb_endp[1],
 
-        /* Needed? */
+        /* Look above */
 	.extralen = sizeof(midi_usb_endp[1])	
 } };
 
@@ -451,13 +451,15 @@ static const struct usb_interface_descriptor midi_streaming_iface[] = {{
 	.extralen = sizeof(midi_streaming_functional_descriptors)
 } };
 
-
+/* Struct with the Interface Descriptors */
 static const struct usb_interface ifaces[] = {
         {
+                /* Audio Control Interface Descriptor*/
                 .num_altsetting = 1,
                 .altsetting = audio_control_iface,
         },
         {
+                /* MIDI Streaming Interface Descriptor*/
                 .num_altsetting = 1,
                 .altsetting = midi_streaming_iface,
         }
@@ -479,7 +481,7 @@ static const struct usb_config_descriptor config = {
 	.bConfigurationValue = 1,
 	.iConfiguration = 0,
 
-        /* bus powered */
+        /* bus powered (power settings)*/
 	.bmAttributes = 0x80, 
 	.bMaxPower = 0x64,
 
@@ -491,13 +493,13 @@ static const struct usb_config_descriptor config = {
 static const char * usb_strings[] = {
 
         /* Manufacturer */
-	"Hold-Solutions.com",
+	"Hold Alexander",
 
         /* Product */
-	"Alex Hold | Serial -> MIDI",
+	"MIDI Converter - STM32",
 
         /* SerialNumber */
-	"AHSM00001\0"			
+	"AHSM00003\0"			
 };
 
 
