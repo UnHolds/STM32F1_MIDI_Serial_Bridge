@@ -33,18 +33,17 @@ Go into the "libopencm3" folder:
 Build "libopencm3": 
 `make`
 
-If make isn't installed, you can install it with the following command (Ubuntu)
+If make isn't installed, you can install it with the following command (Ubuntu)<br />
  `sudo apt install make`
 
 If `make` doesn't work you may are missing the arm toolchain
-to install the arm toolchain use this command (Ubuntu)
+to install the arm toolchain use this command (Ubuntu)<br />
  `sudo apt install gcc-arm-none-eabi`
 
 Go in the "src" folder: 
 `cd ../src/`
 
-Build the firmware: 
-`make` -> *.elf
+Now you can use the Makefiles to build the firmware.
 
 
 ## Current Makefile
